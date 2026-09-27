@@ -1,0 +1,29 @@
+You will need to email me when you have changed your survey for me to post on Piazza.
+
+Disclaimer: in the process of constructing feedback, I recorded my audio and got AI to rephrase my feedback in a concise, clear manner so that I can mark faster + you get more detailed feedback. I did not run any of the assignments through AI.
+
+Survey introduction
+You state that responses will be confidential. Please avoid that wording, because it does not accurately describe how the responses are handled. It is enough to say that you will not collect names, student numbers, or email addresses.
+
+Stratified sampling
+You plan to get the number of students in each program from the instructor. I do not have this information, and I have no way to access it, so you cannot rely on it for your stratified sampling. Please rethink how you will estimate the program proportions, for example by using an initial sample from your own population to estimate them.
+
+Program categories
+Your questionnaire groups statistics and math students into one category. I think opinions could differ a lot between students primarily in a statistics program and students primarily in a math program, so combining them may hide differences you care about. Please consider separating them.
+
+Question 3 (ranges)
+Question 3 combines answers into small ranges (0 to 1, 2 to 3, 4 to 5). Please ask for an integer from 0 to 7 instead. Each range you combine loses information that would help your analysis.
+
+Personal money question
+You already let respondents skip this question, so you do not need to force a range on it. Please ask for an actual number or at least narrow the ranges (i.e., 200 to 300, not up to 499). If someone does not want to disclose it, they can write "not applicable" or "prefer not to say". Ranges this wide lose a lot of information, and more distinct numeric values make your analysis stronger.
+
+Maximum spending on a generative AI service
+This question is not personal, so there is no reason to use a range. Please ask respondents to enter the amount as a number.
+
+Which LLMs students use
+If a student chooses "other", please make them write in which LLM they use. That information is useful for all of us.
+You label the ChatGPT option with Pro and Plus, but you do not do this for the other LLMs, and most of them have both a free and a paid version. Please either list the free and paid versions consistently for every LLM, or leave the version labels out entirely.
+
+(-0.1 due to problems in the questionnaire)
+
+0.9/1
