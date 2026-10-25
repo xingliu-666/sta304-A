@@ -1,0 +1,340 @@
+---
+title: "Exploratory Data Analysis: Estimating the Proportion of Students Who Pay for a Subscription to a Generative AI Tool"
+subtitle: "STA304H5F Group sta304-A"
+author: "Xing Liu, YiXun Chen, DeYang Kong, Zhige Liu, Jerry Ruan"
+date: today
+format:
+  pdf:
+    documentclass: article
+    geometry: "margin=1in"
+header-includes:
+  - \usepackage{fvextra}
+  - \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+  - \DefineVerbatimEnvironment{OutputCode}{Verbatim}{breaklines,commandchars=\\\{\}}
+---
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+# Load packages and read the cleaned data
+library(tidyverse)
+library(easystats)
+library(knitr)
+
+df <- read.csv("sta304_clean.csv")
+```
+
+## Data
+
+We used the cleaned dataset from our last checkpoint (`sta304_clean.csv`). It has `r nrow(df)` responses and `r ncol(df)` variables. In the data cleaning step, we removed 2 duplicate submissions (71 to 69 responses), recorded range answers at their midpoint, and split the "select all that apply" questions into 0/1 columns.
+
+Before the analysis, we checked that the data is usable. All values are in a possible range. Days per week are between `r min(df$ai_days_week)` and `r max(df$ai_days_week)`, usefulness ratings are between `r min(df$ai_usefulness)` and `r max(df$ai_usefulness)`, and no money amounts are negative. Each student ID appears only once. Only monthly spending money has missing values (`r sum(is.na(df$spending_money))` students), so we leave them as NA and R skips them when needed. Spending money also has some very large values (up to `r max(df$spending_money, na.rm = TRUE)`). We keep them because they could be real answers, but we come back to them in the assumption section.
+
+```{r}
+#| echo: false
+# Create binary variables used for the research questions
+df <- df %>%
+  mutate(
+    pays = if_else(paid_access == 2, 1, 0), # 1 = personally pays, 0 = otherwise
+    cs = if_else(program == 1, 1, 0) # 1 = Computer Science, 0 = non-CS
+  )
+```
+
+## Summary Statistics
+
+### Quantitative Variables
+
+```{r}
+#| echo: false
+# Rename quantitative variables to readable names for the report
+quant_df <- df %>%
+  select(
+    `Days per week using GenAI for coursework` = ai_days_week,
+    `Perceived usefulness of GenAI (1-10)` = ai_usefulness,
+    `Monthly discretionary spending (CAD)` = spending_money,
+    `Maximum willingness to pay per month (CAD)` = wtp_monthly
+  )
+
+datawizard::describe_distribution(quant_df, centrality = c("mean", "median")) |>
+  select(-Skewness, -Kurtosis, -MAD) |>
+  print_md(caption = "Summary statistics for the quantitative variables.")
+```
+
+Table 1 shows that students use GenAI about 4 to 5 days a week (mean 4.51, median 4). Most of them find it useful, with a median rating of 8 out of 10. For monthly spending money, the mean is 506 but the median is only 300, and the SD (688.83) is even larger than the mean. A few students reported very large amounts (up to 4000), so the mean is pulled up and the data is right-skewed. Willingness to pay is also right-skewed. The median is 20, but the highest answer is 200. We cannot say a variable is normal just because its mean and median are close, so we check this with plots later.
+
+\newpage
+
+### Qualitative Variables
+
+```{r}
+#| echo: false
+# Convert numeric codes to readable category labels (from the codebook)
+qual_df <- df %>%
+  transmute(
+    `Program of study` = factor(program, levels = 1:3,
+      labels = c("Computer Science",
+                 "Statistics, Mathematics, or Data Science",
+                 "Other")),
+    `Access to paid GenAI tools` = factor(paid_access, levels = 0:2,
+      labels = c("Uses only free versions",
+                 "Paid access, but someone else pays",
+                 "Personally pays for a subscription"))
+  )
+
+datawizard::data_tabulate(qual_df, remove_na = TRUE) |> print_md()
+```
+
+In Table 2, most students who answered our survey are in Statistics, Mathematics, or Data Science (55 out of 69). Only 8 students are in Computer Science and 6 are in other programs, so these groups are small. 37 students (53.6%) pay for a GenAI subscription themselves. 10 students (14.5%) have a paid subscription, but someone else pays for it. The other 22 students (31.9%) only use free versions.
+
+```{r}
+#| echo: false
+# Count how many students selected each tool (1 = selected)
+tool_counts <- colSums(df[, c("tool_chatgpt", "tool_claude", "tool_gemini",
+                              "tool_deepseek", "tool_other")])
+tool_table <- data.frame(
+  Option = c("ChatGPT", "Claude", "Google Gemini", "DeepSeek", "Other tool"),
+  Selected = tool_counts,
+  Percent = round(tool_counts / nrow(df) * 100, 1)
+)
+kable(tool_table, row.names = FALSE,
+      col.names = c("Option", "Number selected", "Percent selected (%)"),
+      caption = "GenAI tools the students have access to (select all that apply, n = 69).")
+```
+
+Table 3 shows that ChatGPT is the most common tool (57 students, 82.6%). Claude and Google Gemini are tied with 27 students each. Only 2 students use another tool. Students could pick more than one tool, so the percentages add up to more than 100%.
+
+```{r}
+#| echo: false
+# Count how many students selected each use of GenAI (1 = selected)
+act_counts <- colSums(df[, c("act_explain", "act_outline", "act_writing", "act_coding",
+                             "act_practice", "act_summarize", "act_other", "act_none")])
+act_table <- data.frame(
+  Option = c("Explaining course concepts", "Outlining ideas", "Writing or editing",
+             "Coding or debugging", "Practice questions or study materials",
+             "Summarizing readings or notes", "Other coursework-related activity",
+             "Did not use GenAI for coursework"),
+  Selected = act_counts,
+  Percent = round(act_counts / nrow(df) * 100, 1)
+)
+kable(act_table, row.names = FALSE,
+      col.names = c("Option", "Number selected", "Percent selected (%)"),
+      caption = "What students used GenAI for in the past 30 days (select all that apply, n = 69).")
+```
+
+Table 4 shows that the most common use is explaining course concepts (60 students, 87.0%). Summarizing readings or notes and practice questions are also common, with more than 60% each. Only 1 student did not use GenAI for coursework at all, so almost everyone in our sample uses it for school.
+
+## Plots and Tables
+
+```{r}
+#| echo: false
+#| fig-align: center
+#| fig-width: 7
+#| fig-height: 4
+#| fig-cap: >
+#|   Bar plot of students' access to paid GenAI tools (RQ1). 37 out of 69 students
+#|   (53.6%) pay for a subscription themselves, which is a little more than half.
+
+# RQ1: bar plot of access to paid GenAI tools
+barplot(table(qual_df$`Access to paid GenAI tools`),
+        names.arg = c("Free versions only", "Someone else pays", "Pays themselves"),
+        xlab = "Access to paid GenAI tools",
+        ylab = "Number of students",
+        ylim = c(0, 40),
+        col = "#6699FF")
+```
+
+```{r}
+#| echo: false
+#| tbl-cap: >
+#|   Whether students pay for a GenAI subscription, by program group (RQ2).
+#|   Only 2 of the 8 CS students (25%) pay, compared to 35 of the 61 non-CS
+#|   students (57.4%). The CS group is very small.
+
+# RQ2: table of paying by program group (row percentages)
+rq2_df <- df %>%
+  transmute(
+    `Program group` = factor(cs, levels = c(1, 0),
+                             labels = c("Computer Science", "Non-CS")),
+    `Pays for a GenAI subscription` = factor(pays, levels = c(1, 0),
+                                             labels = c("Yes", "No"))
+  )
+
+datawizard::data_tabulate(rq2_df, "Program group",
+                          by = "Pays for a GenAI subscription",
+                          proportions = "row",
+                          remove_na = TRUE) |>
+  print_md()
+```
+
+```{r}
+#| echo: false
+#| fig-align: center
+#| fig-width: 9
+#| fig-height: 4
+#| fig-cap: >
+#|   Side-by-side boxplots of days of GenAI use per week, perceived usefulness,
+#|   and monthly spending money for students who pay and do not pay (RQ3). Both groups
+#|   have a median of 4 days per week, but the days are more spread out for students
+#|   who pay. Usefulness looks about the same (both medians are 8 out of 10).
+#|   Students who pay have a slightly higher median spending money (300 vs 200).
+#|   Spending money has several large outliers in both groups.
+
+# RQ3: boxplots of the three predictors by paying status
+df$pays_label <- factor(df$pays, levels = c(0, 1), labels = c("No", "Yes"))
+
+par(mfrow = c(1, 3), cex = 0.9)
+boxplot(ai_days_week ~ pays_label, data = df,
+        xlab = "Pays for a GenAI subscription", ylab = "Days per week using GenAI",
+        col = c("#FF6666", "#6699FF"))
+boxplot(ai_usefulness ~ pays_label, data = df,
+        xlab = "Pays for a GenAI subscription", ylab = "Perceived usefulness (1-10)",
+        col = c("#FF6666", "#6699FF"))
+boxplot(spending_money ~ pays_label, data = df,
+        xlab = "Pays for a GenAI subscription", ylab = "Monthly spending money (CAD)",
+        col = c("#FF6666", "#6699FF"))
+```
+
+## Checking Model Assumptions
+
+```{r}
+#| echo: false
+#| fig-width: 9
+#| fig-height: 6
+#| dpi: 300
+#| fig-cap: >
+#|   Checking the model assumptions of the linear regression model, with paying for a
+#|   GenAI subscription as the response and days of use per week, perceived usefulness,
+#|   and monthly spending money as predictors.
+
+# Fit a linear model to check the model assumptions
+model <- lm(pays ~ ai_days_week + ai_usefulness + spending_money, data = df)
+
+performance::check_model(model,
+            check = c("qq", "normality", "linearity", "homogeneity"))
+```
+
+The assumptions are not met. The residuals in the linearity and homogeneity plots are split into two lines, and the reference lines are not flat. The dots in the Q-Q plot do not follow the line, and the residual distribution has two peaks. This is because our response is only 0 or 1. So both normality and homogeneity of variances are violated. The model uses 66 students because 3 students did not give a usable answer for spending money.
+
+### Log Transformation
+
+Since the assumptions are not met, we tried a log transformation. We cannot transform the response, because it is only 0 or 1. The log of 0 is not defined, and a Box-Cox transformation needs all values to be positive. So we transformed monthly spending money, which is the most skewed variable in our model. We used log(spending money + 1), because one student reported 0.
+
+```{r}
+#| echo: false
+#| fig-align: center
+#| fig-width: 8
+#| fig-height: 4
+#| fig-cap: >
+#|   Histograms of monthly spending money before and after the log transformation.
+#|   Before the transformation, 56 of the 66 students are below 1000 and a few values
+#|   are much larger, so the data is right-skewed. After the transformation, the shape
+#|   is closer to a bell shape. There is still one value far on the left, which is the
+#|   student who reported 0.
+
+# Log transformation of spending money (+1 because one student reported 0)
+df$log_spending <- log(df$spending_money + 1)
+
+par(mfrow = c(1, 2))
+hist(df$spending_money, main = "Before log transformation",
+     xlab = "Monthly spending money (CAD)", ylab = "Number of students",
+     col = "#6699FF")
+hist(df$log_spending, main = "After log transformation",
+     xlab = "log(Monthly spending money + 1)", ylab = "Number of students",
+     col = "#6699FF")
+```
+
+```{r}
+#| echo: false
+#| fig-width: 9
+#| fig-height: 6
+#| dpi: 300
+#| fig-cap: >
+#|   Checking the model assumptions again after using the log of monthly spending money
+#|   as a predictor.
+
+# Fit the linear model again with the log-transformed spending money
+model_log <- lm(pays ~ ai_days_week + ai_usefulness + log_spending, data = df)
+
+performance::check_model(model_log,
+            check = c("qq", "normality", "linearity", "homogeneity"))
+```
+
+After the transformation, spending money is much less skewed (Figure 4). But the residual plots still look almost the same as before (Figure 5). The residuals are still split into two lines and still have two peaks. This is because our response is still only 0 or 1, and changing a predictor cannot change this. So the normality and homogeneity assumptions are still violated. We still use the log of spending money in our logistic regression for RQ3, because it makes the very large values less extreme. For this course, we mention the violation and go ahead with the statistical tests.
+
+## Statistical Tests
+
+```{r}
+#| echo: false
+# RQ1: one-sample z-test for a proportion (H0: p = 0.5, H1: p > 0.5)
+n <- nrow(df)
+x <- sum(df$pays)
+p_hat <- x / n
+z1 <- (p_hat - 0.5) / sqrt(0.5 * 0.5 / n)
+p_value1 <- 1 - pnorm(z1)
+
+# 95% confidence interval for the proportion
+se1 <- sqrt(p_hat * (1 - p_hat) / n)
+ci_lower <- p_hat - 1.96 * se1
+ci_upper <- p_hat + 1.96 * se1
+
+# RQ2: two-sample z-test for proportions (H0: p_CS = p_nonCS, H1: p_CS > p_nonCS)
+x_cs <- sum(df$pays[df$cs == 1])
+n_cs <- sum(df$cs == 1)
+x_non <- sum(df$pays[df$cs == 0])
+n_non <- sum(df$cs == 0)
+p_cs <- x_cs / n_cs
+p_non <- x_non / n_non
+p_pool <- (x_cs + x_non) / (n_cs + n_non)
+z2 <- (p_cs - p_non) / sqrt(p_pool * (1 - p_pool) * (1 / n_cs + 1 / n_non))
+p_value2 <- 1 - pnorm(z2)
+
+# Put the results of the two z-tests in one table
+test_table <- data.frame(
+  Test = c("RQ1: one-sample z-test", "RQ2: two-sample z-test"),
+  z = round(c(z1, z2), 3),
+  p_value = round(c(p_value1, p_value2), 3)
+)
+kable(test_table, col.names = c("Test", "z statistic", "p-value"),
+      caption = "Results of the one-sample and two-sample z-tests for proportions (RQ1 and RQ2).")
+```
+
+For RQ1, 53.6% of students pay for a subscription themselves. The 95% confidence interval is (0.419, 0.654), which includes 0.5. The p-value is 0.274, so we cannot say that more than half of students pay.
+
+For RQ2, only 25% of CS students pay, while 57.4% of non-CS students pay. The p-value is 0.958, so there is no evidence that CS students are more likely to pay. In our data, CS students actually pay less. But we only have 8 CS students, so this result is not very reliable.
+
+```{r}
+#| echo: false
+# RQ3: logistic regression, paying (yes/no) as the response, log of spending money
+rq3_model <- glm(pays ~ ai_days_week + ai_usefulness + log_spending,
+                 data = df, family = binomial)
+
+rq3_table <- parameters::model_parameters(rq3_model) |> as.data.frame()
+rq3_table$Parameter <- c("Intercept", "Days per week using GenAI",
+                         "Perceived usefulness (1-10)", "log(Monthly spending money + 1)")
+
+kable(rq3_table[, c("Parameter", "Coefficient", "SE", "CI_low", "CI_high", "z", "p")],
+      digits = 4,
+      col.names = c("Predictor", "Coefficient", "SE", "95% CI lower",
+                    "95% CI upper", "z", "p-value"),
+      caption = "Logistic regression results for paying for a GenAI subscription (RQ3, n = 66).")
+```
+
+We also used the report package to describe the logistic regression model. In this output, `pays` means paying for a GenAI subscription, `ai_days_week` is days per week using GenAI, `ai_usefulness` is perceived usefulness, and `log_spending` is log(monthly spending money + 1).
+
+```{r}
+#| echo: false
+#| comment: ""
+# Let R describe the logistic regression results
+report::report(rq3_model)
+```
+
+For RQ3, none of the three predictors are significant (all p-values are above 0.3). The coefficients are all positive, so in our sample, students who use GenAI more often, find it more useful, or have more spending money are a little more likely to pay. But since none of these effects are significant, we do not make any directional conclusions.
+
+## Appendix
+
+```{r}
+#| ref.label: !expr knitr::all_labels()
+#| echo: true
+#| eval: false
+```
