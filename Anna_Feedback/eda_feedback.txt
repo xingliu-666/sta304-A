@@ -1,0 +1,18 @@
+STA304 Exploratory Data Analysis Feedback
+
+Overall, the main issue with your report is the model choice described below. I have no other problems with it.
+
+Disclaimer: in the process of constructing feedback, I recorded my audio and got AI to rephrase my feedback in a concise, clear manner so that I can mark faster + you get more detailed feedback. I did not run any of the assignments through AI.
+
+Linear regression on a binary response
+
+In your assumption check, you explain why the linear regression does not work. You note that the residuals split into two lines, the reference lines are not flat, the Q-Q plot does not follow the line, and the residual distribution has two peaks. You then say this is because the response is only 0 or 1. If you already know the response is binary, you did not need to fit a linear model and check its assumptions. You should have used logistic regression from the start.
+
+This is a serious issue. Your proposal says you will use logistic regression, but your code fits linear models with lm(). The two models, model (using spending_money) and model_log (using log_spending), need to be logistic regressions fitted with glm(). You show that you know how to do this in RQ3, where you fit a logistic regression with paying as the response.
+
+Grade breakdown
+
+Computing Statistical Tests (0.25 / 0.4)
+Appropriate test or model computed and reported (0.10 / 0.25). I deducted 0.15 because your proposal planned logistic regression, but the main models are linear regressions on a binary response. The logistic regression in RQ3 shows you know the correct approach, so I did not deduct the full amount.
+
+Total (1.85 / 2)
