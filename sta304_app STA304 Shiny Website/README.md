@@ -1,6 +1,6 @@
 # Who Pays for Generative AI? (STA304H5F, Group sta304-A)
 
-Live app: PASTE-YOUR-POSIT-CONNECT-CLOUD-URL-HERE
+Live app: https://01a21ae6-3f82-3a69-0ba3-bbe57689640c.share.connect.posit.cloud/
 
 An interactive R Shiny website for our survey on whether STA304H5F students
 personally pay for a generative AI subscription.
